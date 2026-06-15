@@ -191,7 +191,7 @@ async function sendMessage() {
     let accumulated = '';
 
     try {
-        const response = await fetch(`http://localhost:8000/api/conversations/${currentConvId}/messages`, {
+        const response = await fetch(`${API_BASE}/conversations/${currentConvId}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

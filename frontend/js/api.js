@@ -1,6 +1,9 @@
 /** API 请求封装：统一处理认证、错误、JSON 解析。 */
 
-const API_BASE = 'http://localhost:8000/api';
+// 自动检测：本地开发用 localhost:8000，部署后用同域名
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api'
+    : '/api';
 
 function getToken() {
     return localStorage.getItem('access_token');
