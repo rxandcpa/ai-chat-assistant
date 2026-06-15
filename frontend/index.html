@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 智能对话助手</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* === 布局 === */
+.app { display: flex; height: 100vh; }
+
+/* === 侧边栏 === */
+.sidebar {
+    width: 280px; min-width: 280px; display: flex; flex-direction: column;
+    border-right: 1px solid var(--border); background: var(--surface);
+}
+.sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
+.sidebar-header h2 { font-size: 16px; margin-bottom: 12px; color: var(--primary); }
+.sidebar-user { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+.sidebar-user span { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.conv-list { flex: 1; overflow-y: auto; padding: 8px; }
+.conv-item {
+    padding: 12px; margin-bottom: 4px; border-radius: var(--radius);
+    cursor: pointer; transition: background 0.15s;
+}
+.conv-item:hover { background: var(--bg); }
+.conv-item.active { background: #eef2ff; border: 1px solid var(--primary); }
+.conv-item-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-item-preview { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty-list { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 20px; line-height: 1.8; }
+
+/* === 主区域 === */
+.main { flex: 1; display: flex; flex-direction: column; }
+.main-header { padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 16px; }
+.main-header select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; outline: none; }
+.main-header .actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* === 消息区 === */
+.message-list { flex: 1; overflow-y: auto; padding: 20px; }
+.message { margin-bottom: 20px; display: flex; flex-direction: column; }
+.message-user { align-items: flex-end; }
+.message-assistant { align-items: flex-start; }
+.message-system { align-items: center; }
+.message-bubble {
+    max-width: 75%; padding: 12px 16px; border-radius: 12px;
+    font-size: 14px; line-height: 1.7; word-break: break-word;
+}
+.message-user .message-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.message-assistant .message-bubble { background: var(--bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; white-space: pre-wrap; }
+.message-bubble.streaming::after { content: '▍'; animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.message-bubble.error { color: var(--danger); border-color: var(--danger); }
+
+.welcome-message { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+.welcome-message h2 { font-size: 28px; margin-bottom: 8px; color: var(--text); }
+
+/* === 输入区 === */
+.input-area { padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface); display: flex; align-items: flex-end; gap: 12px; }
+.input-area textarea { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; resize: none; outline: none; min-height: 44px; max-height: 120px; line-height: 1.5; }
+.input-area textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+</style>
+</head>
+<body>
+<div class="app">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>AI 对话助手</h2>
+            <button class="btn btn-primary btn-block" id="btn-new-conv">＋ 新建对话</button>
+        </div>
+        <div class="conv-list" id="conv-list">
+            <div class="empty-list">暂无对话<br>点击「新建对话」开始</div>
+        </div>
+        <div class="sidebar-user">
+            <span id="current-user">用户</span>
+            <button class="btn btn-outline btn-sm" id="btn-logout">退出</button>
+        </div>
+    </aside>
+
+    <!-- 主区域 -->
+    <main class="main">
+        <div class="main-header">
+            <label>模型：</label>
+            <select id="model-select">
+                <option value="deepseek-chat">DeepSeek Chat</option>
+                <option value="qwen-turbo">通义千问 Turbo</option>
+            </select>
+            <div class="actions">
+                <button class="btn btn-outline btn-sm" id="btn-delete-conv" title="删除当前对话">删除对话</button>
+            </div>
+        </div>
+
+        <div class="message-list" id="message-list">
+            <div class="welcome-message">
+                <h2>AI 智能对话助手</h2>
+                <p>在左侧创建新对话，开始与 AI 交流</p>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <textarea id="send-input" placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows="1"></textarea>
+            <button class="btn btn-primary" id="btn-send">发送</button>
+        </div>
+    </main>
+</div>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/chat.js"></script>
+<script>
+// 删除按钮绑定
+document.getElementById('btn-delete-conv').addEventListener('click', deleteCurrentConversation);
+</script>
+</body>
+</html>
