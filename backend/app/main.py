@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import engine
 from app.models import Conversation, Message, User  # noqa: F401  确保 create_all 发现所有表
 from app.models.base import Base
-from app.routers import auth, users
+from app.routers import auth, conversations, models, users
 
 
 @asynccontextmanager
@@ -38,6 +38,8 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(conversations.router)
+app.include_router(models.router)
 
 
 @app.get("/", tags=["系统"])
