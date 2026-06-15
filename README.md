@@ -65,21 +65,28 @@ ai-chat-assistant/
 
 ## 快速启动
 
-> 详细步骤将在项目开发完成后补充。
-
 ```bash
-# 1. 后端
+# 1. 克隆项目
+git clone git@github.com:rxandcpa/ai-chat-assistant.git
+cd ai-chat-assistant
+
+# 2. 后端
 cd backend
 python -m venv venv
-venv\Scripts\activate      # Windows
+venv\Scripts\activate        # Windows
 pip install -r requirements.txt
-cp .env.example .env       # 编辑 .env 填入配置
+cp .env.example .env         # 编辑 .env 填入 AI API Key 等配置
 uvicorn app.main:app --reload
+# 访问 http://localhost:8000/docs 查看 API 文档
 
-# 2. 前端
+# 3. 前端（新终端）
 cd frontend
-python -m http.server 8080  # 或用 Live Server 打开
+# 方式 A：VS Code Live Server 右键打开 index.html
+# 方式 B：python -m http.server 8080 → http://localhost:8080/index.html
 ```
+
+> 未配置 MySQL 时自动使用 SQLite；未配置 Redis 时自动降级，不影响核心功能。
+> 流式对话需要配置有效的 AI API Key（DeepSeek 或通义千问）。
 
 ---
 
@@ -108,8 +115,22 @@ python -m http.server 8080  # 或用 Live Server 打开
 - [x] 阶段三：对话核心 + AI API（发送消息、流式输出、保存历史）
 - [x] 阶段四：对话管理（列表、详情、删除、Redis 缓存）
 - [x] 阶段五：前端页面（登录/注册页、对话界面、流式显示）
-- [ ] 阶段六：测试与优化（全流程联调、错误处理）
-- [ ] 阶段七：项目收尾（README 完善、代码整理）
+- [x] 阶段六：测试与优化（全流程联调、错误处理、响应式优化）
+
+## 测试结果
+
+端到端测试 31 项全部通过：
+
+| 模块 | 测试数 | 结果 |
+|------|--------|------|
+| 基础检查 | 2 | ✅ |
+| 注册（正常/重复/空值/弱密码） | 6 | ✅ |
+| 登录（正常/错误密码/不存在） | 4 | ✅ |
+| 用户信息（认证/未认证） | 2 | ✅ |
+| 对话 CRUD（创建/列表/详情/删除） | 8 | ✅ |
+| 权限（跨用户访问/删除） | 2 | ✅ |
+| 模型列表 | 3 | ✅ |
+| 边界测试（分页/输入校验） | 4 | ✅ |
 
 ---
 

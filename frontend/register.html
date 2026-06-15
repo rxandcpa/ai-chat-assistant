@@ -42,7 +42,8 @@
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>
 <script>
-handleForm('register-form', data => api.post('/auth/register', data), '/index.html');
+// 注册成功后跳转到登录页（注册不返回 token）
+handleForm('register-form', data => api.post('/auth/register', data), '/login.html');
 </script>
 </body>
 </html>
