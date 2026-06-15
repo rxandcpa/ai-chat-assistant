@@ -50,8 +50,15 @@ def get_available_models() -> list[dict]:
 
 
 def _get_client(model_name: str) -> OpenAI:
-    """根据模型名获取对应的 OpenAI 客户端。"""
-    model_info = MODELS.get(model_name, MODELS[DEFAULT_MODEL])
+    """根据模型名获取对应的 OpenAI 客户端。
+
+    Raises:
+        ValueError: 传入不支持的模型名时抛出。
+    """
+    model_info = MODELS.get(model_name)
+    if model_info is None:
+        available = ", ".join(MODELS.keys())
+        raise ValueError(f"不支持的模型 '{model_name}'，可用模型: {available}")
     return OpenAI(
         api_key=model_info["api_key"],
         base_url=model_info["base_url"],

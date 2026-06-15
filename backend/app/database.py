@@ -10,7 +10,7 @@ from app.config import settings
 # SQLite 需要额外参数，MySQL 需要连接池
 _connect_args = {}
 _engine_kwargs = {"echo": settings.app_debug}
-if "sqlite" in settings.database_url:
+if settings.database_url.startswith("sqlite"):
     _connect_args["check_same_thread"] = False
 else:
     _engine_kwargs["pool_size"] = 10

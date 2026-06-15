@@ -1,6 +1,6 @@
 """对话服务：创建、查询、删除对话，管理消息历史，对接 AI 流式回复。"""
 
-import json
+from queue import Queue
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -144,22 +144,23 @@ class ConversationService:
         user_id: int,
         conversation_id: int,
         data: MessageCreate,
-        queue,
-    ):
+        queue: Queue,
+    ) -> None:
         """发送消息并流式获取 AI 回复，通过 queue 跨线程传输。
 
         流程：
-        1. 保存用户消息
+        1. 校验权限，保存用户消息（flush 不 commit）
         2. 查询历史消息构建上下文
         3. 调用 AI 流式接口
         4. 每个 token chunk 通过 queue.put 发送
-        5. 流结束后保存 AI 回复，并通过 queue.put 发送完成信号
-        6. queue.put(None) 表示流结束
+        5. AI 回复完成后一起 commit（用户消息 + AI 回复）
+        6. 若 AI 调用失败则 rollback，不留下孤儿用户消息
+        7. queue.put(None) 表示流结束
         """
         try:
             conv = self._get_conv_and_check_owner(user_id, conversation_id)
 
-            # 1. 保存用户消息
+            # 1. 保存用户消息（flush 但不 commit，失败时一起回滚）
             user_msg = Message(
                 conversation_id=conversation_id,
                 role="user",
@@ -167,7 +168,7 @@ class ConversationService:
                 token_count=0,
             )
             self.db.add(user_msg)
-            self.db.commit()
+            self.db.flush()
 
             # 2. 构建历史消息上下文
             history = (
@@ -181,12 +182,12 @@ class ConversationService:
             ]
 
             # 3. 流式调用 AI
-            accumulated = []
+            accumulated: list[str] = []
             for chunk in chat_stream(conv.model_name, api_messages):
                 accumulated.append(chunk)
                 queue.put({"event": "delta", "content": chunk})
 
-            # 4. 保存 AI 回复
+            # 4. 保存 AI 回复并一起提交
             ai_content = "".join(accumulated)
             token_count = estimate_token_count(api_messages)
             ai_msg = Message(
@@ -198,14 +199,17 @@ class ConversationService:
             self.db.add(ai_msg)
             self.db.commit()
 
-            # 发送完成信号（带 AI 消息 ID）
+            # 发送完成信号
             queue.put({
                 "event": "done",
                 "message_id": ai_msg.id,
                 "token_count": token_count,
             })
         except Exception as exc:
-            queue.put({"event": "error", "detail": str(exc)})
+            # 任何失败都回滚，避免孤儿用户消息留在数据库
+            self.db.rollback()
+            detail = getattr(exc, "detail", str(exc))
+            queue.put({"event": "error", "detail": str(detail)})
         finally:
             queue.put(None)  # 终止信号
 

@@ -1,5 +1,6 @@
 """FastAPI 应用入口。"""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,7 +14,7 @@ from app.routers import auth, conversations, models, users
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期：启动时自动创建数据库表。"""
     Base.metadata.create_all(bind=engine)
     yield
@@ -42,6 +43,6 @@ app.include_router(models.router)
 
 
 @app.get("/", tags=["系统"])
-async def root():
+async def root() -> dict[str, str]:
     """健康检查。"""
     return {"status": "ok", "app": settings.app_name, "version": "0.1.0"}

@@ -104,7 +104,15 @@ cd frontend
 | POST | /api/conversations/{id}/messages | 发送消息（SSE） |
 | GET | /api/models | 可用模型列表 |
 
-启动后端后访问 `http://localhost:8000/docs` 查看完整的 Swagger API 文档。
+启动后端后访问 http://localhost:8000/docs 查看交互式 Swagger API 文档。
+
+### 架构说明
+
+- **分层架构**：Router（薄层） → Service（业务逻辑） → Model（数据访问）
+- **SSE 流式**：独立线程 + Queue 跨线程通信，线程安全数据库会话
+- **容错设计**：AI 调用失败自动回滚用户消息（不产生孤儿数据），Redis/MySQL 不可用时降级
+- **类型安全**：全链路 Pydantic 校验 + Python 类型注解
+- 详细设计见 [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)，编码规范见 [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md)
 
 ---
 
@@ -116,6 +124,7 @@ cd frontend
 - [x] 阶段四：对话管理（列表、详情、删除、Redis 缓存）
 - [x] 阶段五：前端页面（登录/注册页、对话界面、流式显示）
 - [x] 阶段六：测试与优化（全流程联调、错误处理、响应式优化）
+- [x] 阶段七：项目收尾（代码审计、架构加固、文档完善）
 
 ## 测试结果
 

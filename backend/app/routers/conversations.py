@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import SessionLocal, get_db
 from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
 from app.schemas.conversation import (
@@ -81,7 +81,7 @@ async def delete_conversation(
     conversation_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> None:
     """删除指定对话及其所有消息。"""
     service = ConversationService(db)
     service.delete_conversation(user.id, conversation_id)
@@ -95,7 +95,6 @@ async def send_message(
     conversation_id: int,
     data: MessageCreate,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """向 AI 发送消息，返回 SSE 流式响应。
 
@@ -104,32 +103,32 @@ async def send_message(
         event: done   →  {"message_id": N, "token_count": N}
         event: error  →  {"detail": "..."}
     """
-    service = ConversationService(db)
     queue: Queue = Queue()
+
+    def _run_stream() -> None:
+        """在独立线程中运行 AI 调用，使用独立的数据库会话。"""
+        db = SessionLocal()
+        try:
+            service = ConversationService(db)
+            service.send_message_stream(user.id, conversation_id, data, queue)
+        finally:
+            db.close()
 
     async def sse_generator() -> AsyncGenerator[str, None]:
         """从队列中读取事件并转换为 SSE 格式。"""
-        # 在独立线程中运行同步阻塞的 AI 调用
-        thread = threading.Thread(
-            target=service.send_message_stream,
-            args=(user.id, conversation_id, data, queue),
-            daemon=True,
-        )
+        thread = threading.Thread(target=_run_stream, daemon=True)
         thread.start()
 
+        loop = asyncio.get_running_loop()
         while True:
-            # 使用 asyncio 等待，避免阻塞事件循环
             try:
-                item = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: queue.get(timeout=0.1)
-                )
+                item = await loop.run_in_executor(None, lambda: queue.get(timeout=0.1))
             except Empty:
-                # 线程已完成且队列为空 → 退出
                 if not thread.is_alive():
                     break
                 continue
 
-            if item is None:  # 终止信号
+            if item is None:
                 break
 
             event = item["event"]
