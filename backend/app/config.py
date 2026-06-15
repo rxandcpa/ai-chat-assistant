@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     mysql_host: str = "localhost"
     mysql_port: int = 3306
     mysql_user: str = "root"
-    mysql_password: str
+    mysql_password: str = ""
     mysql_database: str = "ai_chat"
 
     # Redis
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     redis_password: str = ""
 
     # JWT
-    jwt_secret_key: str
+    jwt_secret_key: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440  # 24 小时
 
@@ -34,6 +34,16 @@ class Settings(BaseSettings):
     qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def database_url(self) -> str:
+        """数据库连接 URL：有 MySQL 配置时用 MySQL，否则用 SQLite。"""
+        if self.mysql_password:
+            return (
+                f"mysql+pymysql://{self.mysql_user}:{self.mysql_password}"
+                f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
+            )
+        return "sqlite:///./ai_chat.db"
 
     @property
     def mysql_url(self) -> str:

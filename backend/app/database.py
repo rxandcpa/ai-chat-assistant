@@ -7,11 +7,19 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
+# SQLite 需要额外参数，MySQL 需要连接池
+_connect_args = {}
+_engine_kwargs = {"echo": settings.app_debug}
+if "sqlite" in settings.database_url:
+    _connect_args["check_same_thread"] = False
+else:
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
+
 engine = create_engine(
-    settings.mysql_url,
-    pool_size=10,
-    max_overflow=20,
-    echo=settings.app_debug,
+    settings.database_url,
+    connect_args=_connect_args,
+    **_engine_kwargs,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

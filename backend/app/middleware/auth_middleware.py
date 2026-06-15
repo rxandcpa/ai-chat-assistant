@@ -9,11 +9,12 @@ from app.models.user import User
 from app.services.auth_service import AuthService
 
 # HTTPBearer 自动从 Authorization header 提取 Bearer token
-security_scheme = HTTPBearer()
+# auto_error=False 使我们能自定义 401 响应，而非默认的 403
+security_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
     db: Session = Depends(get_db),
 ) -> User:
     """FastAPI 依赖注入：校验 JWT 并返回当前登录用户。
@@ -31,7 +32,12 @@ def get_current_user(
         当前登录的 User 实例。
 
     Raises:
-        HTTPException 401: token 无效、过期，或用户不存在。
+        HTTPException 401: 未提供 token、token 无效、过期，或用户不存在。
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="请先登录",
+        )
     service = AuthService(db)
     return service.get_current_user(credentials.credentials)
