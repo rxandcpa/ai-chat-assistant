@@ -70,23 +70,40 @@ ai-chat-assistant/
 git clone git@github.com:rxandcpa/ai-chat-assistant.git
 cd ai-chat-assistant
 
-# 2. 后端
+# 2. 安装依赖
 cd backend
 python -m venv venv
 venv\Scripts\activate        # Windows
 pip install -r requirements.txt
-cp .env.example .env         # 编辑 .env 填入 AI API Key 等配置
-uvicorn app.main:app --reload
-# 访问 http://localhost:8000/docs 查看 API 文档
 
-# 3. 前端（新终端）
-cd frontend
-# 方式 A：VS Code Live Server 右键打开 index.html
-# 方式 B：python -m http.server 8080 → http://localhost:8080/index.html
+# 3. 配置 API Key
+cp .env.example .env
+# 编辑 .env，填入：
+#   JWT_SECRET_KEY=你的密钥
+#   DEEPSEEK_API_KEY=sk-你的Key
+
+# 4. 一键启动（前后端合并，单端口）
+uvicorn app.main:app --reload
+
+# 5. 浏览器打开
+# http://localhost:8000        → 前端登录页
+# http://localhost:8000/docs   → Swagger API 交互文档
 ```
 
+> 前后端已合并为单端口（8000），FastAPI 同时提供 API 和前端静态文件。
 > 未配置 MySQL 时自动使用 SQLite；未配置 Redis 时自动降级，不影响核心功能。
-> 流式对话需要配置有效的 AI API Key（DeepSeek 或通义千问）。
+
+### 公网访问（免费，无需注册）
+
+```bash
+# 安装 Cloudflare Tunnel（仅需一次）
+winget install Cloudflare.cloudflared
+
+# 启动公网隧道
+cloudflared tunnel --url http://127.0.0.1:8000
+# 终端会打印一个 https://xxx.trycloudflare.com 地址
+# 用手机或发给任何人即可访问
+```
 
 ---
 
